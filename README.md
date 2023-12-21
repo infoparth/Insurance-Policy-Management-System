@@ -1,69 +1,25 @@
-# Food Item Management Canister
+# Life Insurance Policy Project
 
-This Rust code defines a canister for managing food items. The canister provides functionalities to add, update, delete, and retrieve information about food items. It also includes additional features like listing all food items, searching by name, and performing queries based on quantity thresholds.
+## Introduction
 
-## Dependencies
-- `serde`: Serialization and deserialization library for Rust.
-- `candid`: Library for working with Candid, the interface description language used in the Internet Computer.
-- `ic_cdk`: Library providing APIs for interacting with the Internet Computer.
-- `ic_stable_structures`: Stable storage structures for persistent data.
+This project is designed to manage life insurance policies. It includes several functions to create, update, and manage policies.
 
-## Data Structures
+## Getting Started
 
-### `FoodItem`
-A struct representing a food item with attributes such as ID, name, quantity, creation date, and expiration date.
+1. Clone the repository: `git clone https://github.com/yourusername/life_insurance_policy.git`
+2. Navigate to the project directory: `cd life_insurance_policy`
+3. Install the required dependencies: `npm install` (Node.js) or `pip install -r requirements.txt` (Python)
 
-### `FoodItemPayload`
-A simplified version of `FoodItem`, used for creating new food items without specifying the ID, creation date, and expiration date.
+## Usage
 
-### `ExcessFoodSharePayload`
-A payload structure for sharing excess food, including the food ID and quantity.
+Here is the basic hierarchy of function calls:
 
-## Storage Management
-
-The canister uses stable storage structures, including a `StableBTreeMap`, to persistently store food items. The storage is thread-local, and a `MemoryManager` is employed to manage virtual memory.
-
-## Core Functions
-
-### `add_food_item`
-Adds a new food item to the storage with automatically generated ID, creation date, and expiration date.
-
-### `update_food_item`
-Updates the attributes of an existing food item based on the provided ID.
-
-### `delete_food_item`
-Deletes a food item based on the provided ID.
-
-### `get_food_item`
-Retrieves detailed information about a specific food item based on its ID.
-
-### `list_all_food_items`
-Returns a list of all stored food items.
-
-### `search_food_items_by_name`
-Searches and returns food items that match a given name.
-
-### `get_total_food_quantity`
-Returns the total quantity of all food items.
-
-### `get_food_items_above_quantity` and `get_food_items_below_quantity`
-Retrieve food items with a quantity above or below a specified threshold.
-
-### `get_average_food_quantity`
-Calculates and returns the average quantity of all food items.
-
-### `check_expiration_status`
-Checks and returns the expiration status (expired or not expired) of a food item based on its ID.
-
-### `clear_expired_food_items`
-Removes expired food items from the storage.
-
-## Candid Interface
-
-The canister exports its Candid interface definitions using the `ic_cdk::export_candid!()` macro.
-
-## Error Handling
-
-Errors are represented using the `Error` enum, which includes a `NotFound` variant with a descriptive message.
-
-Feel free to explore and integrate this canister into your Internet Computer project for efficient food item management!
+1. `add_user(UserPayload)`: This function is used to add a new user. The `UserPayload` parameter should be a record containing the necessary details for the user.
+2. `add_life_insurance_policy(PolicyPayload)`: This function is used to add a new life insurance policy. The `PolicyPayload` parameter should be a record containing the necessary details for the policy.
+3. `get_user(nat64)`, `get_user_by_username(text)`: These functions are used to retrieve user details. The parameters are the user ID and username respectively.
+4. `get_life_insurance_policy(nat64)`, `get_active_policies()`, `get_all_life_insurance_policies()`, `get_policies_by_policyholder(nat64)`: These functions are used to retrieve policy details. The parameters are the policy ID and policyholder ID respectively.
+5. `update_user(nat64, UserPayload)`: This function is used to update an existing user. The parameters are the user ID and an object containing the updated user details.
+6. `update_life_insurance_policy(nat64, PolicyPayload)`: This function is used to update an existing policy. The parameters are the policy ID and an object containing the updated policy details.
+7. `delete_user(nat64)`: This function is used to delete a user. The parameter is the user ID.
+8. `delete_life_insurance_policy(nat64)`: This function is used to delete a policy. The parameter is the policy ID.
+9. `claim_policy(nat64)`: This function is used to claim a policy. The parameter is the policy ID.

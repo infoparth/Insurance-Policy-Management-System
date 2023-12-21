@@ -1,25 +1,44 @@
-type Error = variant { NotFound : record { msg : text } };
-type FoodItem = record {
-  id : nat64;
-  name : text;
-  quantity : nat32;
-  expiration_date : nat64;
-  created_date : nat64;
+type Error = variant {
+  NotFound : record { msg : text };
+  InvalidOperation : record { msg : text };
 };
-type FoodItemPayload = record { name : text; quantity : nat32 };
-type Result = variant { Ok : text; Err : Error };
-type Result_1 = variant { Ok : FoodItem; Err : Error };
+type LifeInsurancePolicy = record {
+  id : nat64;
+  updated_at : opt nat64;
+  policy_amount : opt nat64;
+  policyholder_id : nat64;
+  is_claimed : bool;
+  created_at : nat64;
+  tenure_years : nat32;
+  is_active : bool;
+};
+type PolicyPayload = record {
+  policy_amount : opt nat64;
+  policyholder_id : nat64;
+  tenure_years : nat32;
+};
+type Result = variant { Ok : LifeInsurancePolicy; Err : Error };
+type Result_1 = variant { Ok : User; Err : Error };
+type User = record {
+  id : nat64;
+  updated_at : opt nat64;
+  username : text;
+  role : UserRole;
+  created_at : nat64;
+  email : text;
+};
+type UserPayload = record { username : text; role : UserRole; email : text };
+type UserRole = variant { Administrator; Policyholder; Agent };
 service : {
-  add_food_item : (FoodItemPayload) -> (opt FoodItem);
-  check_expiration_status : (nat64) -> (Result) query;
-  clear_expired_food_items : () -> ();
-  delete_food_item : (nat64) -> (Result_1);
-  get_average_food_quantity : () -> (float64) query;
-  get_food_item : (nat64) -> (Result_1) query;
-  get_food_items_above_quantity : (nat32) -> (vec FoodItem) query;
-  get_food_items_below_quantity : (nat32) -> (vec FoodItem) query;
-  get_total_food_quantity : () -> (nat32) query;
-  list_all_food_items : () -> (vec FoodItem) query;
-  search_food_items_by_name : (text) -> (vec FoodItem) query;
-  update_food_item : (nat64, FoodItemPayload) -> (Result_1);
+  add_life_insurance_policy : (PolicyPayload) -> (opt LifeInsurancePolicy);
+  add_user : (UserPayload) -> (opt User);
+  claim_policy : (nat64) -> (Result);
+  delete_life_insurance_policy : (nat64) -> (Result);
+  delete_user : (nat64) -> (Result_1);
+  get_life_insurance_policy : (nat64) -> (Result) query;
+  get_user : (nat64) -> (Result_1) query;
+  list_all_policies : () -> (vec LifeInsurancePolicy) query;
+  list_all_users : () -> (vec User) query;
+  update_life_insurance_policy : (nat64, PolicyPayload) -> (Result);
+  update_user : (nat64, UserPayload) -> (Result_1);
 }

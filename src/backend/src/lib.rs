@@ -1,258 +1,339 @@
-#[macro_use]
-extern crate serde;
-use candid::{Decode, Encode};
+use candid::{CandidType, Decode, Encode};
 use ic_cdk::api::time;
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{BoundedStorable, Cell, DefaultMemoryImpl, StableBTreeMap, Storable};
+use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, cell::RefCell};
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 type IdCell = Cell<u64, Memory>;
+
 // ... (existing imports and types)
 
-#[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
-struct FoodItem {
+#[derive(CandidType, Clone, Serialize, Deserialize, Default)]
+struct User {
     id: u64,
-    name: String,
-    quantity: u32,
-    created_date: u64,
-    expiration_date: u64, // Timestamp for expiration date
+    username: String,
+    email: String,
+    role: UserRole,
+    created_at: u64,
+    updated_at: Option<u64>,
 }
 
-#[derive(candid::CandidType, Serialize, Deserialize, Default)]
-struct FoodItemPayload {
-    name: String,
-    quantity: u32,
+// Define the UserRole enum
+#[derive(CandidType, Clone, Serialize, Deserialize)]
+enum UserRole {
+    Policyholder,
+    Agent,
+    Administrator,
 }
 
-// Implementing Storable and BoundedStorable traits for FoodItem
-impl Storable for FoodItem {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+// Manually implementing Default for UserRole
+impl Default for UserRole {
+    fn default() -> Self {
+        UserRole::Policyholder
+    }
+}
+
+// Implementing Storable and BoundedStorable traits for User
+impl Storable for User {
+    fn to_bytes(&self) -> Cow<[u8]> {
         Cow::Owned(Encode!(self).unwrap())
     }
 
-    fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
         Decode!(bytes.as_ref(), Self).unwrap()
     }
 }
 
-impl BoundedStorable for FoodItem {
+impl BoundedStorable for User {
     const MAX_SIZE: u32 = 1024;
     const IS_FIXED_SIZE: bool = false;
 }
 
+#[derive(CandidType, Serialize, Deserialize, Default)]
+struct UserPayload {
+    username: String,
+    email: String,
+    role: UserRole,
+}
+
 // ... (existing thread-local variables and payload structure)
 
+// New thread-local variables for our Life Insurance Policy Management app
+
 thread_local! {
-    static FOOD_MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> = RefCell::new(
+    static USER_MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> = RefCell::new(
         MemoryManager::init(DefaultMemoryImpl::default())
     );
 
-    static FOOD_ID_COUNTER: RefCell<IdCell> = RefCell::new(
-        IdCell::init(FOOD_MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(0))), 0)
-            .expect("Cannot create a counter for food items")
+    static USER_ID_COUNTER: RefCell<IdCell> = RefCell::new(
+        IdCell::init(USER_MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(0))), 0)
+            .expect("Cannot create a counter for users")
     );
 
-    static FOOD_STORAGE: RefCell<StableBTreeMap<u64, FoodItem, Memory>> =
+    static USER_STORAGE: RefCell<StableBTreeMap<u64, User, Memory>> =
         RefCell::new(StableBTreeMap::init(
-            FOOD_MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(1)))
+            USER_MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(1)))
     ));
 }
 
-// Helper method to perform insert for FoodItem
-fn do_insert_food_item(item: &FoodItem) {
-    FOOD_STORAGE.with(|service| service.borrow_mut().insert(item.id, item.clone()));
+// Helper method to perform insert for User
+fn do_insert_user(user: &User) {
+    USER_STORAGE.with(|service| service.borrow_mut().insert(user.id, user.clone()));
 }
 
-#[derive(candid::CandidType, Serialize, Deserialize, Default)]
-struct ExcessFoodSharePayload {
-    food_id: u64,
-    quantity: u32,
+#[derive(CandidType, Clone, Serialize, Deserialize, Default)]
+struct LifeInsurancePolicy {
+    id: u64,
+    policyholder_id: u64,
+    policy_amount: Option<u64>,
+    is_active: bool,
+    is_claimed: bool,
+    tenure_years: u32,
+    created_at: u64,
+    updated_at: Option<u64>,
 }
 
+// Implementing Storable and BoundedStorable traits for LifeInsurancePolicy
+impl Storable for LifeInsurancePolicy {
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::Owned(Encode!(self).unwrap())
+    }
 
-// Managing Food Items
-// In this section, we'll implement the core logic for managing food items within our canister.
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        Decode!(bytes.as_ref(), Self).unwrap()
+    }
+}
 
-// get_food_item Function:
+impl BoundedStorable for LifeInsurancePolicy {
+    const MAX_SIZE: u32 = 1024;
+    const IS_FIXED_SIZE: bool = false;
+}
+
+#[derive(CandidType, Serialize, Deserialize, Default)]
+struct PolicyPayload {
+    policyholder_id: u64,
+    policy_amount: Option<u64>,
+    tenure_years: u32,
+}
+
+// ... (existing thread-local variables and payload structure)
+
+// New thread-local variables for our Life Insurance Policy Management app
+
+thread_local! {
+    static POLICY_MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> = RefCell::new(
+        MemoryManager::init(DefaultMemoryImpl::default())
+    );
+
+    static POLICY_ID_COUNTER: RefCell<IdCell> = RefCell::new(
+        IdCell::init(POLICY_MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(0))), 0)
+            .expect("Cannot create a counter for life insurance policies")
+    );
+
+    static POLICY_STORAGE: RefCell<StableBTreeMap<u64, LifeInsurancePolicy, Memory>> =
+        RefCell::new(StableBTreeMap::init(
+            POLICY_MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(1)))
+    ));
+}
+
+// Helper method to perform insert for LifeInsurancePolicy
+fn do_insert_life_insurance_policy(policy: &LifeInsurancePolicy) {
+    POLICY_STORAGE.with(|service| service.borrow_mut().insert(policy.id, policy.clone()));
+}
+
+// get_user Function:
 #[ic_cdk::query]
-fn get_food_item(id: u64) -> Result<FoodItem, Error> {
-    match _get_food_item(&id) {
-        Some(item) => Ok(item),
+fn get_user(id: u64) -> Result<User, Error> {
+    match _get_user(&id) {
+        Some(user) => Ok(user),
         None => Err(Error::NotFound {
-            msg: format!("a food item with id={} not found", id),
+            msg: format!("a user with id={} not found", id),
         }),
     }
 }
 
-// _get_food_item Function:
-fn _get_food_item(id: &u64) -> Option<FoodItem> {
-    FOOD_STORAGE.with(|s| s.borrow().get(id))
+// 3.4.2 _get_user Function:
+fn _get_user(id: &u64) -> Option<User> {
+    USER_STORAGE.with(|s| s.borrow().get(id))
 }
 
-// add_food_item Function:
+// 3.4.3 add_user Function:
 #[ic_cdk::update]
-fn add_food_item(item: FoodItemPayload) -> Option<FoodItem> {
-    let id = FOOD_ID_COUNTER
+fn add_user(user_payload: UserPayload) -> Option<User> {
+    let id = USER_ID_COUNTER
         .with(|counter| {
             let current_value = *counter.borrow().get();
             counter.borrow_mut().set(current_value + 1)
         })
-        .expect("cannot increment id counter for food items");
-    let food_item = FoodItem {
+        .expect("cannot increment id counter for users");
+    let timestamp = time();
+    let user = User {
         id,
-        name: item.name,
-        quantity: item.quantity,
-        created_date: time(),
-        expiration_date: time() + 86_400_000_000_000,
+        username: user_payload.username,
+        email: user_payload.email,
+        role: user_payload.role,
+        created_at: timestamp,
+        updated_at: None,
     };
-    do_insert_food_item(&food_item);
-    Some(food_item)
+    do_insert_user(&user);
+    Some(user)
 }
 
-// update_food_item Function:
+// 3.4.4 update_user Function:
 #[ic_cdk::update]
-fn update_food_item(id: u64, item: FoodItemPayload) -> Result<FoodItem, Error> {
-    match FOOD_STORAGE.with(|service| service.borrow().get(&id)) {
-        Some(mut food_item) => {
-            food_item.name = item.name;
-            food_item.quantity = item.quantity;
-            food_item.created_date = time();
-            food_item.expiration_date;
-            do_insert_food_item(&food_item);
-            Ok(food_item)
+fn update_user(id: u64, payload: UserPayload) -> Result<User, Error> {
+    match USER_STORAGE.with(|service| service.borrow().get(&id)) {
+        Some(mut user) => {
+            user.username = payload.username;
+            user.email = payload.email;
+            user.role = payload.role;
+            user.updated_at = Some(time());
+            do_insert_user(&user);
+            Ok(user)
         }
         None => Err(Error::NotFound {
-            msg: format!("couldn't update a food item with id={}. item not found", id),
+            msg: format!("couldn't update a user with id={}. user not found", id),
         }),
     }
 }
 
-// delete_food_item Function:
+// 3.4.5 delete_user Function:
 #[ic_cdk::update]
-fn delete_food_item(id: u64) -> Result<FoodItem, Error> {
-    match FOOD_STORAGE.with(|service| service.borrow_mut().remove(&id)) {
-        Some(food_item) => Ok(food_item),
+fn delete_user(id: u64) -> Result<User, Error> {
+    match USER_STORAGE.with(|service| service.borrow_mut().remove(&id)) {
+        Some(user) => Ok(user),
+        None => Err(Error::NotFound {
+            msg: format!("couldn't delete a user with id={}. user not found.", id),
+        }),
+    }
+}
+
+// 3.5.3 add_life_insurance_policy Function:
+#[ic_cdk::update]
+fn add_life_insurance_policy(policy_payload: PolicyPayload) -> Option<LifeInsurancePolicy> {
+    let id = POLICY_ID_COUNTER
+        .with(|counter| {
+            let current_value = *counter.borrow().get();
+            counter.borrow_mut().set(current_value + 1)
+        })
+        .expect("cannot increment id counter for life insurance policies");
+    let timestamp = time();
+    let policy = LifeInsurancePolicy {
+        id,
+        policyholder_id: policy_payload.policyholder_id,
+        policy_amount: policy_payload.policy_amount,
+        is_active: true,   // By default, a new policy is active
+        is_claimed: false, // By default, a new policy has not been claimed
+        tenure_years: policy_payload.tenure_years,
+        created_at: timestamp,
+        updated_at: None,
+    };
+    do_insert_life_insurance_policy(&policy);
+    Some(policy)
+}
+
+// 3.5.1 get_life_insurance_policy Function:
+#[ic_cdk::query]
+fn get_life_insurance_policy(id: u64) -> Result<LifeInsurancePolicy, Error> {
+    match _get_life_insurance_policy(&id) {
+        Some(policy) => Ok(policy),
+        None => Err(Error::NotFound {
+            msg: format!("a life insurance policy with id={} not found", id),
+        }),
+    }
+}
+
+// 3.5.2 _get_life_insurance_policy Function:
+fn _get_life_insurance_policy(id: &u64) -> Option<LifeInsurancePolicy> {
+    POLICY_STORAGE.with(|s| s.borrow().get(id))
+}
+
+// 3.5.4 update_life_insurance_policy Function:
+#[ic_cdk::update]
+fn update_life_insurance_policy(
+    id: u64,
+    payload: PolicyPayload,
+) -> Result<LifeInsurancePolicy, Error> {
+    match POLICY_STORAGE.with(|service| service.borrow().get(&id)) {
+        Some(mut policy) => {
+            policy.policy_amount = payload.policy_amount;
+            policy.tenure_years = payload.tenure_years;
+            policy.updated_at = Some(time());
+            do_insert_life_insurance_policy(&policy);
+            Ok(policy)
+        }
         None => Err(Error::NotFound {
             msg: format!(
-                "couldn't delete a food item with id={}. item not found.",
+                "couldn't update a life insurance policy with id={}. policy not found",
                 id
             ),
         }),
     }
 }
 
-// enum Error:
-#[derive(candid::CandidType, Deserialize, Serialize)]
-enum Error {
-    NotFound { msg: String },
-}
-
-#[ic_cdk::query]
-fn check_expiration_status(id: u64) -> Result<String, Error> {
-    match _get_food_item(&id) {
-        Some(food_item) => {
-            let current_timestamp = time();
-            if current_timestamp > food_item.expiration_date {
-                Ok("Expired".to_string())
-            } else {
-                Ok("Not Expired".to_string())
-            }
-        }
+// 3.5.5 delete_life_insurance_policy Function:
+#[ic_cdk::update]
+fn delete_life_insurance_policy(id: u64) -> Result<LifeInsurancePolicy, Error> {
+    match POLICY_STORAGE.with(|service| service.borrow_mut().remove(&id)) {
+        Some(policy) => Ok(policy),
         None => Err(Error::NotFound {
-            msg: format!("a food item with id={} not found", id),
+            msg: format!(
+                "couldn't delete a life insurance policy with id={}. policy not found.",
+                id
+            ),
         }),
     }
 }
 
-// List All Food Items
-#[ic_cdk::query]
-fn list_all_food_items() -> Vec<FoodItem> {
-    FOOD_STORAGE.with(|service| {
-        let storage = service.borrow_mut();
-        storage.iter().map(|(_, item)| item.clone()).collect()
-    })
-}
-
-// Search Food Items by Name
-#[ic_cdk::query]
-fn search_food_items_by_name(name: String) -> Vec<FoodItem> {
-    FOOD_STORAGE.with(|service| {
-        let storage = service.borrow_mut();
-        storage
-            .iter()
-            .filter(|(_, item)| item.name == name)
-            .map(|(_, item)| item.clone())
-            .collect()
-    })
-}
-
-// Get Total Quantity of All Food Items
-#[ic_cdk::query]
-fn get_total_food_quantity() -> u32 {
-    FOOD_STORAGE.with(|service| {
-        let storage = service.borrow_mut();
-        storage.iter().map(|(_, item)| item.quantity).sum()
-    })
-}
-
-// Function to retrieve food items with a quantity above a specified threshold
-#[ic_cdk::query]
-fn get_food_items_above_quantity(threshold: u32) -> Vec<FoodItem> {
-    FOOD_STORAGE.with(|service| {
-        let storage = service.borrow_mut();
-        storage
-            .iter()
-            .filter(|(_, item)| item.quantity > threshold)
-            .map(|(_, item)| item.clone())
-            .collect()
-    })
-}
-
-// Function to retrieve food items with a quantity below a specified threshold
-#[ic_cdk::query]
-fn get_food_items_below_quantity(threshold: u32) -> Vec<FoodItem> {
-    FOOD_STORAGE.with(|service| {
-        let storage = service.borrow_mut();
-        storage
-            .iter()
-            .filter(|(_, item)| item.quantity < threshold)
-            .map(|(_, item)| item.clone())
-            .collect()
-    })
-}
-
-// Function to get the average quantity of all food items
-#[ic_cdk::query]
-fn get_average_food_quantity() -> f64 {
-    FOOD_STORAGE.with(|service| {
-        let storage = service.borrow_mut();
-        let total_items = storage.len() as f64;
-        let total_quantity: f64 = storage.iter().map(|(_, item)| item.quantity as f64).sum();
-        if total_items > 0.0 {
-            total_quantity / total_items
-        } else {
-            0.0
-        }
-    })
-}
-
-// Function to clear expired food items from storage
 #[ic_cdk::update]
-fn clear_expired_food_items() {
-    let current_timestamp = time();
-    FOOD_STORAGE.with(|service| {
-        let mut storage = service.borrow_mut();
-        let expired_items: Vec<u64> = storage
-            .iter()
-            .filter(|(_, item)| current_timestamp > item.expiration_date)
-            .map(|(id, _)| id)
-            .collect();
-
-        for id in expired_items {
-            storage.remove(&id);
+fn claim_policy(policy_id: u64) -> Result<LifeInsurancePolicy, Error> {
+    match _get_life_insurance_policy(&policy_id) {
+        Some(policy) => {
+            if policy.is_active && !policy.is_claimed {
+                // Perform the update within _get_life_insurance_policy
+                _update_life_insurance_policy(&policy_id, |mut stored_policy| {
+                    stored_policy.is_claimed = true;
+                    stored_policy.updated_at = Some(time());
+                    stored_policy
+                });
+                Ok(policy.clone())
+            } else {
+                Err(Error::InvalidOperation {
+                    msg: format!("cannot claim the policy with id={}", policy_id),
+                })
+            }
         }
-    });
+        None => Err(Error::NotFound {
+            msg: format!("policy with id={} not found", policy_id),
+        }),
+    }
+}
+
+// Helper method to update LifeInsurancePolicy within POLICY_STORAGE
+fn _update_life_insurance_policy<F>(id: &u64, update_fn: F)
+where
+    F: FnOnce(LifeInsurancePolicy) -> LifeInsurancePolicy,
+{
+    // Get the policy using the _get_life_insurance_policy function
+    if let Some(policy) = _get_life_insurance_policy(id) {
+        // Apply the update function
+        let updated_policy = update_fn(policy.clone());
+
+        // Update the policy in the storage
+        POLICY_STORAGE.with(|service| {
+            let mut storage = service.borrow_mut();
+            storage.insert(id.clone(), updated_policy);
+        });
+    }
+}
+
+// Define the Error enum
+#[derive(CandidType, Deserialize, Serialize)]
+enum Error {
+    NotFound { msg: String },
+    InvalidOperation { msg: String },
 }
 
 // To generate the Candid interface definitions for our canister
